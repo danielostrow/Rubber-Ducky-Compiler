@@ -102,6 +102,8 @@ def encode_string(text):
     result = []
     for char in text:
         result.extend(encode_char(char))
+        if delay > 0:
+            result.extend(encode_delay(delay))
     return result
 
 
@@ -177,11 +179,11 @@ def compile_script(input_path, output_path):
 
             elif line.startswith('STRING '):
                 text = line[7:]  # Everything after "STRING "
-                payload.extend(encode_string(text))
+                payload.extend(encode_string(text, default_delay))
 
             elif line.startswith('STRINGLN '):
                 text = line[9:]  # Everything after "STRINGLN "
-                payload.extend(encode_string(text))
+                payload.extend(encode_string(text, default_delay))
                 payload.extend([SPECIAL_KEYS['ENTER'], MOD_NONE])  # [keycode, modifier]
 
             # Single special keys
