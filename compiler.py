@@ -12,7 +12,7 @@ Binary format:
 import sys
 import os
 
-# HID Keycodes (directly from decoder analysis)
+# HID Keycodes
 KEYCODES = {
     'a': 0x04, 'b': 0x05, 'c': 0x06, 'd': 0x07, 'e': 0x08, 'f': 0x09,
     'g': 0x0a, 'h': 0x0b, 'i': 0x0c, 'j': 0x0d, 'k': 0x0e, 'l': 0x0f,
@@ -26,7 +26,7 @@ KEYCODES = {
     '`': 0x35, ' ': 0x2c,
 }
 
-# Shifted characters (require shift modifier)
+# Shifted characters
 SHIFT_CHARS = {
     'A': 0x04, 'B': 0x05, 'C': 0x06, 'D': 0x07, 'E': 0x08, 'F': 0x09,
     'G': 0x0a, 'H': 0x0b, 'I': 0x0c, 'J': 0x0d, 'K': 0x0e, 'L': 0x0f,
@@ -141,7 +141,7 @@ def parse_modifier_combo(line):
                 print(f"Warning: Unknown key '{part}'")
 
     if keycode is not None:
-        return [keycode, modifier]  # [keycode, modifier] - swapped for new ducky
+        return [keycode, modifier]  # [keycode, modifier]
     elif modifier != MOD_NONE:
         # Just modifier pressed (like just GUI key)
         return [0x00, modifier]  # [keycode, modifier]
