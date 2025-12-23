@@ -72,7 +72,7 @@ MOD_NONE  = 0x00
 MOD_CTRL  = 0x01
 MOD_SHIFT = 0x02
 MOD_ALT   = 0x04
-MOD_GUI   = 0x08  # Windows/Command key
+MOD_GUI   = 0x08
 
 
 def encode_delay(ms):
@@ -80,25 +80,24 @@ def encode_delay(ms):
     result = []
     while ms > 0:
         chunk = min(ms, 255)
-        result.extend([0x00, chunk])  # Delay format: [0x00, value]
+        result.extend([0x00, chunk])
         ms -= chunk
     return result
 
 
 def encode_char(char):
-    """Encode a single character. Returns [keycode, modifier] (swapped for new ducky)."""
+    """Encode a single character. Returns [keycode, modifier]."""
     if char in KEYCODES:
-        return [KEYCODES[char], MOD_NONE]  # [keycode, modifier]
+        return [KEYCODES[char], MOD_NONE]
     elif char in SHIFT_CHARS:
-        return [SHIFT_CHARS[char], MOD_SHIFT]  # [keycode, modifier]
+        return [SHIFT_CHARS[char], MOD_SHIFT]
     else:
-        # Unknown character, skip
         print(f"Warning: Unknown character '{char}' (0x{ord(char):02x}), skipping")
         return []
 
 
-def encode_string(text):
-    """Encode a STRING command. Returns list of bytes."""
+def encode_string(text, delay=0):
+    """Encode a STRING command with optional delay between chars."""
     result = []
     for char in text:
         result.extend(encode_char(char))
@@ -121,7 +120,7 @@ def get_key_code(key_name):
 
 
 def parse_modifier_combo(line):
-    """Parse a line with modifiers like 'CTRL ALT DELETE' or 'COMMAND SPACE'."""
+    """Parse a line with modifiers like 'CTRL ALT DELETE'."""
     parts = line.split()
     modifier = MOD_NONE
     keycode = None
@@ -137,16 +136,14 @@ def parse_modifier_combo(line):
         elif part_upper in ('GUI', 'WINDOWS', 'COMMAND', 'CMD', 'META'):
             modifier |= MOD_GUI
         else:
-            # This should be the key
             keycode = get_key_code(part)
             if keycode is None:
                 print(f"Warning: Unknown key '{part}'")
 
     if keycode is not None:
-        return [keycode, modifier]  # [keycode, modifier]
+        return [keycode, modifier]
     elif modifier != MOD_NONE:
-        # Just modifier pressed (like just GUI key)
-        return [0x00, modifier]  # [keycode, modifier]
+        return [0x00, modifier]
     return []
 
 
@@ -161,11 +158,9 @@ def compile_script(input_path, output_path):
     for line_num, line in enumerate(lines, 1):
         line = line.strip()
 
-        # Skip empty lines and comments
         if not line or line.startswith('REM') or line.startswith('//'):
             continue
 
-        # Add default delay between commands if set
         if default_delay > 0 and payload:
             payload.extend(encode_delay(default_delay))
 
@@ -178,26 +173,25 @@ def compile_script(input_path, output_path):
                 payload.extend(encode_delay(delay_ms))
 
             elif line.startswith('STRING '):
-                text = line[7:]  # Everything after "STRING "
+                text = line[7:]
+                # FIX: Pass default_delay to encode_string
                 payload.extend(encode_string(text, default_delay))
 
             elif line.startswith('STRINGLN '):
-                text = line[9:]  # Everything after "STRINGLN "
+                text = line[9:]
+                # FIX: Pass default_delay to encode_string
                 payload.extend(encode_string(text, default_delay))
-                payload.extend([SPECIAL_KEYS['ENTER'], MOD_NONE])  # [keycode, modifier]
+                payload.extend([SPECIAL_KEYS['ENTER'], MOD_NONE])
 
-            # Single special keys
             elif line in SPECIAL_KEYS:
-                payload.extend([SPECIAL_KEYS[line], MOD_NONE])  # [keycode, modifier]
+                payload.extend([SPECIAL_KEYS[line], MOD_NONE])
 
-            # Modifier combinations (CTRL, ALT, GUI/COMMAND, SHIFT + key)
             elif any(line.upper().startswith(mod) for mod in
                     ['CTRL', 'CONTROL', 'ALT', 'SHIFT', 'GUI', 'WINDOWS', 'COMMAND', 'CMD']):
                 result = parse_modifier_combo(line)
                 if result:
                     payload.extend(result)
 
-            # REPEAT command (repeat last instruction)
             elif line.startswith('REPEAT') or line.startswith('REPLAY'):
                 count = int(line.split()[1]) if len(line.split()) > 1 else 1
                 if len(payload) >= 2:
@@ -212,7 +206,6 @@ def compile_script(input_path, output_path):
             print(f"Error on line {line_num}: {e}")
             continue
 
-    # Write binary output
     with open(output_path, 'wb') as f:
         f.write(bytes(payload))
 
